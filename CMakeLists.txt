@@ -5,7 +5,6 @@ project(IPFilterProject)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Найдите библиотеку Boost
 find_package(Boost REQUIRED COMPONENTS unit_test_framework)
 
 # Добавляем исполняемый файл для основной программы
@@ -25,3 +24,17 @@ enable_testing()
 
 # Добавляем тесты
 add_test(NAME TestIPFilter COMMAND test_ip_filter)  # Регистрация теста
+
+# Установка пакета (например, .deb для Linux)
+include(CPack)  # Включаем CPack для создания пакетов
+
+set(CPACK_GENERATOR "DEB;DMG")  # Указываем генераторы для Debian и macOS
+set(CPACK_PACKAGE_NAME "IPFilterProject")  # Имя пакета
+set(CPACK_PACKAGE_VERSION "0.1.0")  # Версия пакета
+set(CPACK_PACKAGE_DESCRIPTION "A project for filtering IP addresses")  # Описание пакета
+
+# Устанавливаем файлы в пакет
+install(TARGETS ip_filter DESTINATION bin)  # Установка исполняемого файла в /usr/local/bin
+
+# Включаем CPack
+include(CPack)
