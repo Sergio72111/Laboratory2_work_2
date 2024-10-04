@@ -26,3 +26,9 @@ if (APPLE)
 elseif (UNIX)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-no-as-needed")
 endif()
+
+# Добавляем тесты в CMake
+enable_testing()  # Включаем поддержку тестирования
+
+# Добавляем тесты
+add_test(NAME TestIPFilter COMMAND test_ip_filter)  # Добавляем цель 'test' для запуска тестов
