@@ -1,0 +1,101 @@
+name: 'C++ CI'  # Название рабочего процесса
+
+on:
+  push:  # Запускает процесс при событии push
+    branches:
+      - main  # Для ветки main
+      - feature/github_actions  # Для веток с названием feature/github_actions
+
+permissions:
+  contents: write  # Права на запись в репозиторий
+
+jobs:
+  build:  # Определение задачи сборки
+    strategy:
+      matrix:  # Использует матрицу для запуска на нескольких ОС
+        os: [ubuntu-latest, macos-latest]  # Указывает, что задача будет выполняться на Ubuntu и macOS
+    runs-on: ${{ matrix.os }}  # Запускает задачу на ОС, указанной в матрице
+
+    steps:  # Шаги выполнения задачи
+      - uses: actions/checkout@v3  # Проверяет код репозитория
+        with:
+          submodules: true  # Включает подмодули при проверке
+
+      - name: Install dependencies on Linux  # Установка зависимостей для Linux
+        if: ${{ runner.os == 'Linux' }}  # Условие для выполнения только на Linux
+        run: |  # Выполняет следующие команды в оболочке
+          sudo apt-get update  # Обновляет список пакетов
+          sudo apt-get install -y libboost-test-dev  # Устанавливает библиотеку Boost Test
+
+      - name: Install dependencies on macOS  # Установка зависимостей для macOS
+        if: ${{ runner.os == 'macOS' }}  # Условие для выполнения только на macOS
+        run: |  
+          brew update  # Обновляет Homebrew
+          brew install boost  # Устанавливает библиотеку Boost
+
+      - name: Configure with CMake  # Конфигурация проекта с помощью CMake
+        run: |  
+          cmake . -DPATCH_VERSION=${{ github.run_number }}  # Запускает CMake с указанием версии патча
+
+      - name: Build the project  # Сборка проекта
+        run: |  
+          cmake --build .  # Строит проект с помощью CMake
+
+      - name: Run tests  # Запуск тестов проекта
+        run: |  
+          cmake --build . --target test  # Запускает тесты, определенные в CMake
+
+      - name: Create package  # Создание пакета для распространения
+        run: |  
+          cmake --build . --target package  # Создает пакет (например, .deb или .dmg)
+
+      - name: Create Release for Linux  # Создание релиза для Linux
+        if: ${{ runner.os == 'Linux' }}  # Условие для выполнения только на Linux
+        id: create_release_linux  # Уникальный идентификатор для этого шага
+        uses: actions/create-release@v1  # Использует действие для создания релиза на GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Токен доступа к GitHub из секретов репозитория
+        with:
+          tag_name: "linux-${{ github.run_number }}"  # Имя тега релиза (например, linux-1)
+          release_name: "Release Linux ${{ github.run_number }}"  # Название релиза (например, Release Linux 1)
+          draft: false  # Не создавать черновик релиза
+          prerelease: false  # Не делать предварительный релиз
+
+      - name: Upload Release Asset (Linux)  # Загрузка артефакта релиза для Linux
+        if: ${{ runner.os == 'Linux' }}  # Условие для выполнения только на Linux
+        uses: actions/upload-release-asset@v1  
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  #агрузку артефакта (например, .dmg файл для macOS) в релиз на GitHub.
+        with:
+          upload_url: ${{ steps.create_release_linux.outputs.upload_url }}  
+          asset_path: ./helloworld-0.0.${{ github.run_number }}-Linux.deb  # Путь к артефакту (например, .deb файл)
+          asset_name: helloworld-0.0.${{ github.run_number }}-Linux.deb  # Имя артефакта (например, helloworld-0.0.1-Linux.deb)
+          asset_content_type: application/vnd.debian.binary-package  # Тип контента для Debian пакетов
+
+      - name: Create Release for macOS  # Создание релиза для macOS
+        if: ${{ runner.os == 'macOS' }}  # Условие для выполнения только на macOS
+        id: create_release_macos   # Уникальный идентификатор для этого шага, который можно использовать в других шагах
+        uses: actions/create-release@v1  
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+        with:
+          tag_name: "macos-${{ github.run_number }}"   # Имя тега для релиза, основанное на номере запуска GitHub Actions
+          release_name: "Release macOS ${{ github.run_number }}"  
+          draft: false   # Указывает, что релиз не должен быть черновиком (т.е. он будет опубликован)
+          prerelease: false  # Указывает, что релиз не является предварительным (т.е. это окончательный релиз)
+
+      - name: Upload Release Asset (macOS)  # Загрузка артефакта релиза для macOS 
+        if: ${{ runner.os == 'macOS' }}  
+        uses: actions/upload-release-asset@v1  # Использует действие GitHub для загрузки артефактов в релиз
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+        with:
+          upload_url: ${{ steps.create_release_macos.outputs.upload_url }}  # URL для загрузки артефакта, полученный из предыдущего шага создания релиза
+          asset_path: ./helloworld-0.0.${{ github.run_number }}-Darwin.dmg  # Путь к артефакту (например, .dmg файл)
+          asset_name: helloworld-0.0.${{ github.run_number }}-Darwin.dmg  
+          asset_content_type: application/x-apple-diskimage   # Тип контента для образа диска Apple
+
+
+
+
+#Стратегия матрицы в GitHub Actions — это мощная функция, позволяющая создавать один определенный шаг (job) и запускать его несколько раз в зависимости от заданных переменных. Это особенно полезно для обеспечения того, чтобы ваше приложение работало в различных средах без необходимости дублировать рабочие процессы.
