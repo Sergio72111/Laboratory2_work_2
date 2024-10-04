@@ -42,11 +42,9 @@ jobs:
         run: |  
           ctest --output-on-failure  
 
-      - name: Create package (Linux)  # Создание пакета для Linux
-        if: ${{ runner.os == 'Linux' }}  
+      - name: Create package  # Создание пакета для распространения
         run: |  
           cmake --build . --target package  
-          ls -l ./IPFilterProject-0.1.0-Linux.deb  
 
       - name: Create Release for Linux  
         if: ${{ runner.os == 'Linux' }}  
@@ -71,12 +69,6 @@ jobs:
           asset_name: IPFilterProject-0.1.0-Linux.deb  
           asset_content_type: application/vnd.debian.binary-package  
 
-      - name: Create package (macOS)  # Создание пакета для macOS
-        if: ${{ runner.os == 'macOS' }}  
-        run: |  
-          cmake --build . --target package  
-          ls -l ./IPFilterProject-0.1.0-Darwin.dmg  
-
       - name: Create Release for macOS  
         if: ${{ runner.os == 'macOS' }}  
         id: create_release_macos   
@@ -98,4 +90,4 @@ jobs:
           upload_url: ${{ steps.create_release_macos.outputs.upload_url }}  
           asset_path: ./IPFilterProject-0.1.0-Darwin.dmg  
           asset_name: IPFilterProject-0.1.0-Darwin.dmg  
-          asset_content_type: application/x-apple-diskimage
+          asset_content_type: application/x-apple-diskimage   
