@@ -25,7 +25,7 @@ enable_testing()
 # Добавляем тесты
 add_test(NAME TestIPFilter COMMAND test_ip_filter)  # Регистрация теста
 
-# Установка пакета (например, .deb для Linux)
+# Установка пакета (например, .deb для Linux и .dmg для macOS)
 include(CPack)  # Включаем CPack для создания пакетов
 
 set(CPACK_GENERATOR "DEB;DMG")  # Указываем генераторы для Debian и macOS
