@@ -1,93 +1,86 @@
-name: 'C++ CI'  
+name: CI/CD
 
 on:
-  push:  
+  push:
     branches:
-      - main  
-      - feature/github_actions  
-
-permissions:              
-  contents: write  
+      - main
+      - feature/github_actions
 
 jobs:
-  build:  
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]  
-    runs-on: ${{ matrix.os }}  
-    steps:  
-      - uses: actions/checkout@v3  
-
-      - name: Install dependencies on Linux  
-        if: ${{ runner.os == 'Linux' }}  
-        run: |  
-          sudo apt-get update  
-          sudo apt-get install -y libboost-test-dev cmake g++  
-
-      - name: Install dependencies on macOS  
-        if: ${{ runner.os == 'macOS' }}  
-        run: |  
-          brew update  
-          brew install boost cmake  
-
-      - name: Configure with CMake  
-        run: |  
-          cmake .  
-
-      - name: Build the project  
-        run: |  
-          cmake --build . --config Release  
-
-      - name: Run tests  
-        run: |  
-          ctest --output-on-failure  
-
-      - name: Create package  
-        run: |  
-          cmake --build . --target package  
-
-      - name: Create Release for Linux  
-        if: ${{ runner.os == 'Linux' }}  
-        id: create_release_linux  
-        uses: actions/create-release@v1  
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+  build-linux:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v3
         with:
-          tag_name: "linux-${{ github.run_number }}"  
-          release_name: "Release Linux ${{ github.run_number }}"  
-          draft: false  
-          prerelease: false  
+          submodules: true
+      
+      - run: |
+          sudo apt-get update && sudo apt-get install -y libboost-test-dev libglfw3-dev libglm-dev || { echo 'Failed to install dependencies'; exit 1; }
+      
+      - run: cmake . -DPATCH_VERSION=${{ github.run_number }}
+      
+      - run: cmake --build .
+      
+      - run: cmake --build . --target test
+      
+      - run: cmake --build . --target package
 
-      - name: Upload Release Asset (Linux)  
-        if: ${{ runner.os == 'Linux' }}  
+      - name: Check if tag exists
+        id: check_tag_exists
+        run: |
+          TAG="release-${{ github.run_number }}-${{ github.sha }}"
+          git tag -l | grep -q "$TAG" && echo "tag_exists=true" >> $GITHUB_ENV || echo "tag_exists=false" >> $GITHUB_ENV
+
+      - name: Create Release
+        id: create_release
+        if: env.tag_exists == 'false'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "release-${{ github.run_number }}-${{ github.sha }}"
+          release_name: Release ${{ github.run_number }}
+          draft: false
+          prerelease: false 
+
+      - name: Upload Release Asset 
+        id: upload-release-asset 
+        if: env.tag_exists == 'false'
         uses: actions/upload-release-asset@v1  
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
         with:
-          upload_url: ${{ steps.create_release_linux.outputs.upload_url }}  
-          asset_path: ./IPFilterProject-0.1.0-Linux.deb   
-          asset_name: IPFilterProject-0.1.0-Linux.deb   
-          asset_content_type: application/vnd.debian.binary-package  
+          upload_url: ${{ steps.create_release.outputs.upload_url }}  
+          asset_path: ./helloworld-0.0.${{ github.run_number }}-Linux.deb  
+          asset_name: helloworld-0.0.${{ github.run_number }}-Linux.deb  
+          asset_content_type: application/vnd.debian.binary-package 
 
-      - name: Create Release for macOS  
-        if: ${{ runner.os == 'macOS' }}  
-        id: create_release_macos   
-        uses: actions/create-release@v1  
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+  build-macos:
+    runs-on: macos-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v3
         with:
-          tag_name: "macos-${{ github.run_number }}"   
-          release_name: "Release macOS ${{ github.run_number }}"  
-          draft: false   
-          prerelease: false  
-
-      - name: Upload Release Asset (macOS)  
-        if: ${{ runner.os == 'macOS' }}  
-        uses: actions/upload-release-asset@v1  
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-        with:
-          upload_url: ${{ steps.create_release_macos.outputs.upload_url }}  
-          asset_path: ./IPFilterProject-0.1.0-Darwin.dmg   
-          asset_name: IPFilterProject-0.1.0-Darwin.dmg   
-          asset_content_type: application/x-apple-diskimage   
+          submodules: true
+      
+      - run: |
+          brew update && brew install boost glfw glm || { echo 'Failed to install dependencies'; exit 1; }
+      
+      - run: cmake . -DPATCH_VERSION=${{ github.run_number }}
+      
+      - run: cmake --build .
+      
+      - run: cmake --build . --target test
+      
+      - run: cmake --build . --target package
+      
+      - name: Check if tag exists for macOS 
+        id: check_tag_exists_macos 
+        run: |
+          TAG="release-${{ github.run_number }}-${{ github.sha }}"
+          if git tag -l | grep -q "$TAG"; then
+            echo "tag_exists=true" >> $GITHUB_ENV;
+          else
+            echo "tag_exists=false" >> $GITHUB_ENV;
+          fi
