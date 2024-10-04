@@ -40,7 +40,7 @@ jobs:
 
       - name: Run tests  # Запуск тестов проекта
         run: |  
-          cmake --build . --target test  
+          ctest --output-on-failure  # Запускает тесты и выводит результаты
 
       - name: Create package  # Создание пакета для распространения
         run: |  

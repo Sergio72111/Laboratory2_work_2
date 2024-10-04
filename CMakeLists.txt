@@ -20,15 +20,8 @@ target_link_libraries(test_ip_filter Boost::unit_test_framework)
 # Копируем файл ip_filter.tsv в директорию сборки
 configure_file(ip_filter.tsv ${CMAKE_CURRENT_BINARY_DIR}/ip_filter.tsv COPYONLY)
 
-# Установка флагов компоновщика для macOS и Linux
-if (APPLE)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-no_pie")
-elseif (UNIX)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-no-as-needed")
-endif()
-
-# Добавляем тесты в CMake
-enable_testing()  # Включаем поддержку тестирования
+# Включаем поддержку тестирования
+enable_testing()
 
 # Добавляем тесты
-add_test(NAME TestIPFilter COMMAND test_ip_filter)  # Добавляем цель 'test' для запуска тестов
+add_test(NAME TestIPFilter COMMAND test_ip_filter)  # Регистрация теста
