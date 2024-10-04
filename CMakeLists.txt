@@ -28,7 +28,12 @@ add_test(NAME TestIPFilter COMMAND test_ip_filter)  # Регистрация т�
 # Установка пакета (например, .deb для Linux и .dmg для macOS)
 include(CPack)  # Включаем CPack для создания пакетов
 
-set(CPACK_GENERATOR "DEB;DMG")  # Указываем генераторы для Debian и macOS
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(CPACK_GENERATOR "DEB")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(CPACK_GENERATOR "DMG")
+endif()
+
 set(CPACK_PACKAGE_NAME "IPFilterProject")  # Имя пакета
 set(CPACK_PACKAGE_VERSION "0.1.0")  # Версия пакета
 set(CPACK_PACKAGE_DESCRIPTION "A project for filtering IP addresses")  # Описание пакета
@@ -39,6 +44,3 @@ set(CPACK_PACKAGE_CONTACT "your_email@example.com")  # Контактная ин
 
 # Устанавливаем файлы в пакет
 install(TARGETS ip_filter DESTINATION bin)  # Установка исполняемого файла в /usr/local/bin
-
-# Включаем CPack
-include(CPack)
