@@ -1,128 +1,109 @@
-name: CMake Build, Test and Release
+name: C++ CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
+      - feature/github_actions
 
 permissions:
   contents: write
 
 jobs:
-  build-and-release-linux:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60  # Увеличьте время выполнения, если это необходимо
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
 
-    - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y cmake libboost-test-dev
+      - name: Debug - Start
+        run: echo "Starting the job"
 
-    - name: Clean CMake build cache
-      run: rm -rf build
-      shell: bash
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libboost-all-dev \
+            cmake \
+            openmpi-bin \
+            libopenmpi-dev
 
-    - name: Configure CMake
-      run: cmake -S . -B build
-      shell: bash
+      # Отладка перед сборкой
+      - name: Debug - Post install
+        run: echo "Dependencies installed"
 
-    - name: Build the project
-      run: cmake --build build --config Release
-      shell: bash
+      - name: Create build directory
+        run: mkdir -p build
 
-    - name: List build directory
-      run: ls -la build/
+      - name: Configure with CMake
+        run: |
+          cd build
+          cmake .. -DPATCH_VERSION=${{ github.run_number }}
+          
+      - name: Build the project
+        run: |
+          cd build
+          cmake --build .
 
-    - name: Package binaries
-      run: |
-        mkdir -p release
-        cp build/ip_filter release/
-      shell: bash
+      - name: Run tests
+        run: |
+          cd build
+          cmake --build . --target test
 
-    - name: Upload Release Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: ip_filter-binaries
-        path: release/
+      - name: Create package
+        run: |
+          cd build
+          cmake --build . --target package
 
-    - name: Create GitHub Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v1.0.${{ github.run_number }}
-        release_name: Release v1.0.${{ github.run_number }}
-        draft: false
-        prerelease: false
+      # Отладка перед проверкой существования пакета
+      - name: Debug - List contents of build directory after package creation
+        run: ls -l ./build
 
-    - name: Upload binaries to Release
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release/ip_filter  # Corrected path to match where you placed it.
-        asset_name: ip_filter-executable
-        asset_content_type: application/octet-stream
+      # Проверка существования пакета для Linux
+      - name: Check if Linux package exists
+        run: |
+          if [ -f "./build/IFilterProject-0.1.0-Linux.sh" ]; then  # Убедитесь, что имя файла правильное
+            echo "Linux package exists."
+          else
+            echo "Linux package does not exist."
+            exit 1
+          fi
 
-  build-and-release-macos:
-    runs-on: macos-14  # Use macOS 14 runner
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "release-${{ github.run_number }}"
+          release_name: "Release ${{ github.run_number }}"
+          draft: false
+          prerelease: false
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      # Отладка перед загрузкой ассета
+      - name: Debug - List contents of build directory before upload
+        run: ls -l ./build
 
-    - name: Install dependencies
-      run: brew install cmake boost  # Install dependencies using Homebrew
-    
-    - name: Clean CMake build cache
-      run: rm -rf build
-      shell: bash
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/IFilterProject-0.1.0-Linux.sh  # Убедитесь, что путь правильный для созданного пакета 
+          asset_name: IFilterProject-0.1.0-Linux.sh 
+          asset_content_type: application/x-sh
 
-    - name: Configure CMake
-      run: cmake -S . -B build
-      shell: bash
-
-    - name: Build the project
-      run: cmake --build build --config Release
-      shell: bash
-
-    - name: List build directory
-      run: ls -la build/
-
-    - name: Package binaries
-      run: |
-        mkdir -p release
-        cp build/ip_filter release/
-      shell: bash
-
-    - name: Upload Release Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: ip_filter-binaries-macos
-        path: release/
-
-    - name: Create GitHub Release for macOS
-      id: create_release_macos
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v1.0.${{ github.run_number }}-macos  # Different tag for macOS release
-        release_name: Release v1.0.${{ github.run_number }}-macos 
-        draft: false
-        prerelease: false
-
-    - name: Upload binaries to Release for macOS
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release_macos.outputs.upload_url }}
-        asset_path: release/ip_filter  # Corrected path to match where you placed it.
-        asset_name: ip_filter-executable-macos  # Different asset name for clarity 
-        asset_content_type: application/octet-stream 
+      - name: Debug - End
+        run: echo "Ending the job"
+      
+      - name: Debug - List all files in build directory at the end of the job
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "List of files in build directory:"
+          ls -la ./build
