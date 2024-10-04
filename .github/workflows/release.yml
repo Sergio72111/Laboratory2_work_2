@@ -1,93 +1,34 @@
-name: 'C++ CI'  
+name: CMake Build and Test
 
 on:
-  push:  
-    branches:
-      - main  
-      - feature/github_actions  
-
-permissions:              
-  contents: write  
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:  
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]  
-    runs-on: ${{ matrix.os }}  
-    steps:  
-      - uses: actions/checkout@v3  
+  build-and-test:
+    runs-on: ubuntu-latest
 
-      - name: Install dependencies on Linux  
-        if: ${{ runner.os == 'Linux' }}  
-        run: |  
-          sudo apt-get update  
-          sudo apt-get install -y libboost-test-dev cmake g++  
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Install dependencies on macOS  
-        if: ${{ runner.os == 'macOS' }}  
-        run: |  
-          brew update  
-          brew install boost cmake  
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y cmake libboost-test-dev
 
-      - name: Configure with CMake  
-        run: |  
-          cmake .  
+    - name: Clean CMake build cache
+      run: rm -rf build
+      shell: bash
 
-      - name: Build the project  
-        run: |  
-          cmake --build . --config Release  
+    - name: Configure CMake
+      run: cmake -S . -B build
+      shell: bash
 
-      - name: Run tests  
-        run: |  
-          ctest --output-on-failure  
+    - name: Build the project
+      run: cmake --build build
+      shell: bash
 
-      - name: Create package  
-        run: |  
-          cmake --build . --target package  
-
-      - name: Create Release for Linux  
-        if: ${{ runner.os == 'Linux' }}  
-        id: create_release_linux  
-        uses: actions/create-release@v1  
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-        with:
-          tag_name: "linux-${{ github.run_number }}"  
-          release_name: "Release Linux ${{ github.run_number }}"  
-          draft: false  
-          prerelease: false  
-
-      - name: Upload Release Asset (Linux)  
-        if: ${{ runner.os == 'Linux' }}  
-        uses: actions/upload-release-asset@v1  
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-        with:
-          upload_url: ${{ steps.create_release_linux.outputs.upload_url }}  
-          asset_path: ./IPFilterProject-0.1.0-Linux.deb   
-          asset_name: IPFilterProject-0.1.0-Linux.deb   
-          asset_content_type: application/vnd.debian.binary-package  
-
-      - name: Create Release for macOS  
-        if: ${{ runner.os == 'macOS' }}  
-        id: create_release_macos   
-        uses: actions/create-release@v1  
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-        with:
-          tag_name: "macos-${{ github.run_number }}"   
-          release_name: "Release macOS ${{ github.run_number }}"  
-          draft: false   
-          prerelease: false  
-
-      - name: Upload Release Asset (macOS)  
-        if: ${{ runner.os == 'macOS' }}  
-        uses: actions/upload-release-asset@v1  
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-        with:
-          upload_url: ${{ steps.create_release_macos.outputs.upload_url }}  
-          asset_path: ./IPFilterProject-0.1.0-Darwin.dmg   
-          asset_name: IPFilterProject-0.1.0-Darwin.dmg   
-          asset_content_type: application/x-apple-diskimage   
+    - name: Run tests
+      run: ctest --test-dir build
+      shell: bash
