@@ -1,28 +1,37 @@
 name: C++ CI
 
+
+#Запускающие события: Рабочий процесс настроен на запуск push событий для main и feature/github_actions ветвей.
 on:
   push:
     branches:
       - main
       - feature/github_actions
 
+
+#Разрешения: Предоставляет доступ на запись к содержимому репозитория, разрешая действия по изменению файлов.
 permissions:
   contents: write
 
+#Определение задания: задано задание с именем build, которое будет выполняться в последней версии Ubuntu.
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # Увеличьте время выполнения, если это необходимо
+    timeout-minutes: 60  # Увеличьте время выполнения, если это необходимо, Настройка тайм-аута: задание будет прервано через 60 минут. Это значение можно изменить, если ожидается более длительное выполнение.
 
+
+    #Шаг проверки: использует actions/checkout действие для клонирования репозитория, включая его подмодули.
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           submodules: true
 
+        #Запуск отладки: выводит сообщение о том, что задание запущено, что полезно для отслеживания прогресса в журналах.
       - name: Debug - Start
         run: echo "Starting the job"
 
+        #Установка зависимостей: обновляет список пакетов и устанавливает необходимые библиотеки и инструменты для разработки, требуемые для создания проекта.
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -33,27 +42,33 @@ jobs:
             libopenmpi-dev
 
       # Отладка перед сборкой
+      #Отладка после установки: подтверждает, что зависимости были успешно установлены.
       - name: Debug - Post install
         run: echo "Dependencies installed"
 
+        #Создание каталога сборки: создает каталог с именемbuild, в который будет скомпилирован проект. Флаг -p гарантирует отсутствие ошибок, если он уже существует.
       - name: Create build directory
         run: mkdir -p build
 
+        #Конфигурация CMake: Вносятся изменения в build каталог и запускается CMake для настройки проекта, передавая версию исправления, основанную на текущем номере запуска на GitHub.
       - name: Configure with CMake
         run: |
           cd build
           cmake .. -DPATCH_VERSION=${{ github.run_number }}
           
+        #Сборка проекта: компилирует проект с помощью CMake изbuildкаталога.
       - name: Build the project
         run: |
           cd build
           cmake --build .
 
+        #Запуск тестов: выполняет все заданные тесты в проекте с помощью цели CMake «test».
       - name: Run tests
         run: |
           cd build
           cmake --build . --target test
 
+        #Создание пакета: создает пакет для распространения с использованием целевого пакета CMake.
       - name: Create package
         run: |
           cd build
@@ -64,6 +79,7 @@ jobs:
         run: ls -l ./build
 
       # Проверка существования пакета для Linux
+      #Проверка наличия пакета: проверяет, существует ли конкретный файл пакета Linux. Если он существует, выводится подтверждение; в противном случае выводится сообщение об ошибке.
       - name: Check if Linux package exists
         run: |
           if [ -f "./build/IFilterProject-0.1.0-Linux.sh" ]; then  # Убедитесь, что имя файла правильное
@@ -73,6 +89,7 @@ jobs:
             exit 1
           fi
 
+        #Создание выпуска: используется actions/create-release для создания нового выпуска на GitHub. Он устанавливает тег и название выпуска на основе текущего номера запуска, помечая его как не черновик и не предварительный выпуск.
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -88,6 +105,8 @@ jobs:
       - name: Debug - List contents of build directory before upload
         run: ls -l ./build
 
+
+        #Загрузить ресурс выпуска: используется actions/upload-release-asset для загрузки созданного пакета Linux в качестве ресурса во вновь созданный релиз GitHub. Он определяет пути и тип контента для правильной обработки.
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
@@ -98,9 +117,11 @@ jobs:
           asset_name: IFilterProject-0.1.0-Linux.sh 
           asset_content_type: application/x-sh
 
+        #Завершение отладки: выводит сообщение о завершении работы
       - name: Debug - End
         run: echo "Ending the job"
       
+        #Заключительный шаг отладки: выводит текущий рабочий каталог и перечисляет все файлы в build каталоге в конце задания для окончательной проверки и устранения неполадок.
       - name: Debug - List all files in build directory at the end of the job
         run: |
           echo "Current directory:"

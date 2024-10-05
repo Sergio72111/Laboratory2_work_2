@@ -104,53 +104,64 @@ jobs:
           echo "List of files in build directory:"
           ls -la ./build
 
-  build-mac:
+  build-mac: #Определение задания для macOS: задание с именем build-macопределено для запуска на macOS с таймаутом 60 минут.
     runs-on: macos-latest
     timeout-minutes: 60
 
+    #Шаг проверки для macOS: Как и в Linux, на этом шаге проверяется репозиторий вместе с его подмодулями.
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           submodules: true
 
+      #Запуск отладки для macOS: выводит сообщение, указывающее, что это задание запущено специально для macOS.
       - name: Debug - Start for macOS
         run: echo "Starting the job for macOS"
 
+      #Установка зависимостей в macOS : обновляет Homebrew и устанавливает необходимые библиотеки и инструменты для разработки, требуемые для сборки в macOS.
       - name: Install dependencies on macOS
         run: |
           brew update
           brew install boost cmake open-mpi
 
+        #Отладка после установки для macOS: подтверждает, что зависимости были успешно установлены в macOS.
       - name: Debug - Post install for macOS
         run: echo "Dependencies installed for macOS"
 
+      #Создание каталога сборки для macOS : создает build каталог специально для сборок macOS, гарантируя отсутствие ошибок, если он уже существует.
       - name: Create build directory for macOS
         run: mkdir -p build
 
+        #Конфигурация CMake для macOS : изменения в build каталоге и запуск CMake для настройки проекта с передачей версии исправления, основанной на текущем номере выполнения на GitHub.
       - name: Configure with CMake for macOS
         run: |
           cd build
           cmake .. -DPATCH_VERSION=${{ github.run_number }}
 
+        #Сборка проекта для macOS : компилирует проект с помощью CMake из его build каталога в macOS.
       - name: Build the project for macOS
         run: |
           cd build
           cmake --build .
 
+        #Запуск тестов для macOS : выполняет все заданные тесты в проекте с помощью тестовой цели CMake специально для macOS.
       - name: Run tests for macOS
         run: |
           cd build
           cmake --build . --target test
 
+        #Создание пакета для macOS : создает пакет, пригодный для распространения, с помощью цели CMake, предназначенной для macOS.
       - name: Create package for macOS
         run: |
           cd build
           cmake --build . --target package
 
+        #Отладка создания пакетов в macOS : выводит список всех файлов в build каталоге после создания пакетов для проверки успешного создания.
       - name: Debug - List contents of build directory after package creation for macOS
         run: ls -l ./build
 
+      #Проверка наличия пакета в macOS: проверяет, существует ли любой из двух возможных выходных файлов (.sh или .tar.gz). В случае обнаружения выводится подтверждение; в противном случае выполняется завершение с кодом ошибки.
       - name: Check if macOS package exists
         run: |
 
@@ -161,6 +172,7 @@ jobs:
             exit 1
           fi
 
+      #Создание выпуска для macOS: аналогично Linux, на этом этапе создается новый выпуск GitHub с тегами и названием в соответствии со схемой нумерации версий GitHub.
       - name: Create Release for macOS
         id: create_release_macos
         uses: actions/create-release@v1
@@ -172,9 +184,11 @@ jobs:
           draft: false
           prerelease: false
 
+        #Отладка перед загрузкой на macOS : перечисляет файлы в build каталоге перед загрузкой ресурсов, чтобы убедиться, что все в порядке перед загрузкой.
       - name: Debug - List contents of build directory before upload for macOS
         run: ls -l ./build
 
+      #Для загрузки ресурсов выпуска (macOS) используется actions/upload-release-asset для загрузки .sh или .tar.gz файла, созданного во время упаковки, в качестве ресурса в соответствующий выпуск GitHub с правильным указанием путей и типа контента.
       - name: Upload Release Asset (macOS)
         uses: actions/upload-release-asset@v1
         env:
@@ -185,9 +199,11 @@ jobs:
           asset_name: IFilterProject-0.1.0-Darwin.tar.gz
           asset_content_type: application/gzip
 
+        #Завершение отладки в macOS : выводит сообщение о том, что это задание выполнено
       - name: Debug - End for macOS
         run: echo "Ending the job for macOS"
 
+      #Заключительный этап отладки в macOS По завершении задания выводит текущий рабочий каталог и перечисляет все файлы в этом build каталоге, что облегчает окончательную проверку и устранение неполадок.
       - name: Debug - List all files in build directory at the end of the job for macOS
         run: |
           echo "Current directory:"
